@@ -1,0 +1,159 @@
+version: '3.7'
+
+services:
+# nginx-proxy #####################
+#Proxy inverso, se encarga de resivir las peticiones a los dominios asociados
+#a nuestros contenedores de aplicaciones web
+  nginx-proxy-stefanini:
+    image: jwilder/nginx-proxy
+    container_name: proxy
+    ports:
+#Comunica la red del servidor, con la red interna de docker.
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./nginx/ssl/certs:/etc/nginx/certs:ro
+      - ./nginx/ssl/vhostd:/etc/nginx/vhost.d
+      - ./nginx/ssl/html:/usr/share/nginx/html
+    labels:
+      - com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy
+    networks:
+      - back-network
+      - front-network
+
+# #letsencript
+#Se encarega de generarnos los certificados de seguridad SSL
+#Cada 60 minutos realiza una verificación de la caducidad de nuestros certificados
+# de haber caducado, vuelve y hace la solicitud y los almacena en nuestro servidor.
+  letsencrypt-stefanini:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    restart: always
+    depends_on:
+      - nginx-proxy-stefanini
+    environment:
+      - NGINX_PROXY_CONTAINER=nginx-proxy-stefanini
+    volumes:
+      - ./nginx/ssl/certs:/etc/nginx/certs:rw
+      - ./nginx/ssl/vhostd:/etc/nginx/vhost.d
+      - ./nginx/ssl/html:/usr/share/nginx/html
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - back-network
+      - front-network
+
+ #MySQL Service (DEV)
+ #Base de datos para desarrollo.
+  mysql-stefanini:
+    depends_on:
+      - nginx-proxy-stefanini
+    image: mysql:5.7.22
+    container_name: mysql
+    restart: always
+    tty: true
+    ports:
+  #Tiene comunicación unicamente con la red interna de docker
+      - "3306"
+    environment:
+      MYSQL_DATABASE: test
+      MYSQL_ROOT_PASSWORD: your_mysql_root_password
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+      MYSQL_USER: user
+      MYSQL_PASSWORD: mysql_password
+    volumes:
+      - ./mysql/dbdata/:/var/lib/mysql/
+      - ./mysql/my.cnf/:/etc/mysql/my.cnf
+    networks:
+      - back-network
+
+ #PHPMyAdmi Service (DEV)
+ #Cliente para bases de datos. Desarrollo.
+  phpmyadmin-stefanini:
+    depends_on:
+      - mysql-stefanini
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    restart: always
+    environment:
+      PMA_PORT: 3306
+      PMA_HOST: mysql
+      PMA_USER: user
+      PMA_PASSWORD: mysql_password
+    ports:
+        - "8080:80"
+    networks:
+      - back-network
+
+############## API REST LARAVEL ################
+
+#Nginx Service
+#Servidor web nginx
+  webserverback:
+    depends_on:
+      - nginx-proxy-stefanini
+    image: nginx:alpine
+    container_name: webserver
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "80"
+      - "443"
+    volumes:
+     # Archivo de configuración para el servidor con PHP
+      - ./nginx/sites/stefaniniback.conf:/etc/nginx/conf.d/stefaniniback.conf
+      - ./nginx/ssl/certs/:/etc/nginx/ssl/
+      - ../stefaniniappback/:/var/www
+    environment:
+     #El identificador del contenedor ante el proxy inverso.
+      - VIRTUAL_HOST=stefaniniback.admiapp.com
+      - LETSENCRYPT_HOST=stefaniniback.admiapp.com
+      - LETSENCRYPT_EMAIL=cesarago852@gmail.com
+    networks:
+      - back-network
+
+#PHP Service
+#Contenedor con dependencias necesarias para la interpretación de PHP
+#La imagen en la carpeta PHP debe ser copiada en la raiz del proyecto Laravel
+  appback:
+    build:
+      context: ../stefaniniappback
+      dockerfile: Dockerfile
+    image: admiapp
+    container_name: app
+    restart: unless-stopped
+    depends_on:
+      - webserverback
+    tty: true
+    working_dir: /var/www
+    volumes:
+      - ../stefaniniappback:/var/www
+    networks:
+      - back-network
+
+############## END API REST LARAVEL ################
+#--------------------------------------------------#
+############## FRONT APP REACT #####################
+
+############## END FRONT APP REACT #################
+
+#Volumes
+#Persistencia de datos de contenedores
+
+volumes:
+  webserverback:
+    driver: local
+  appback:
+    driver: local
+  nginx-proxy-stefanini:
+    driver: local
+  letsencript-stefanini:
+    driver: local
+
+#Docker Networks
+#Redes internas de docker
+networks:
+  back-network:
+    driver: bridge
+  front-network:
+    driver: bridge

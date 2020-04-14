@@ -6,7 +6,7 @@ services:
 #a nuestros contenedores de aplicaciones web
   nginx-proxy-stefanini:
     image: jwilder/nginx-proxy
-    container_name: proxy
+    container_name: proxy-stefanini
     ports:
 #Comunica la red del servidor, con la red interna de docker.
       - "80:80"
@@ -28,6 +28,7 @@ services:
 # de haber caducado, vuelve y hace la solicitud y los almacena en nuestro servidor.
   letsencrypt-stefanini:
     image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: letsencrypt-stefanini
     restart: always
     depends_on:
       - nginx-proxy-stefanini
@@ -48,7 +49,7 @@ services:
     depends_on:
       - nginx-proxy-stefanini
     image: mysql:5.7.22
-    container_name: mysql
+    container_name: mysql-stefanini
     restart: always
     tty: true
     ports:
@@ -73,7 +74,7 @@ services:
     depends_on:
       - mysql-stefanini
     image: phpmyadmin/phpmyadmin
-    container_name: phpmyadmin
+    container_name: phpmyadmin-stefanini
     restart: always
     environment:
       PMA_PORT: 3306
@@ -93,7 +94,7 @@ services:
     depends_on:
       - nginx-proxy-stefanini
     image: nginx:alpine
-    container_name: webserver
+    container_name: webserverback
     restart: unless-stopped
     tty: true
     ports:
@@ -120,7 +121,7 @@ services:
       context: ../stefaniniappback
       dockerfile: Dockerfile
     image: admiapp
-    container_name: app
+    container_name: appbacks
     restart: unless-stopped
     depends_on:
       - webserverback

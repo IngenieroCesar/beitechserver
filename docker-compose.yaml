@@ -2,11 +2,11 @@ version: '3.7'
 
 services:
 # nginx-proxy #####################
-#Proxy inverso, se encarga de resivir las peticiones a los dominios asociados
-#a nuestros contenedores de aplicaciones web
-  nginx-proxy-stefanini:
+# Proxy inverso, se encarga de resivir las peticiones a los dominios asociados
+# a nuestros contenedores de aplicaciones web
+  nginx-proxy:
     image: jwilder/nginx-proxy
-    container_name: proxy-stefanini
+    container_name: nginx-proxy
     ports:
 #Comunica la red del servidor, con la red interna de docker.
       - "80:80"
@@ -26,12 +26,12 @@ services:
 #Se encarega de generarnos los certificados de seguridad SSL
 #Cada 60 minutos realiza una verificación de la caducidad de nuestros certificados
 # de haber caducado, vuelve y hace la solicitud y los almacena en nuestro servidor.
-  letsencrypt-stefanini:
+  letsencrypt:
     image: jrcs/letsencrypt-nginx-proxy-companion
-    container_name: letsencrypt-stefanini
+    container_name: letsencrypt
     restart: always
     depends_on:
-      - nginx-proxy-stefanini
+      - nginx-proxy
     environment:
       - NGINX_PROXY_CONTAINER=nginx-proxy-stefanini
     volumes:
@@ -44,19 +44,19 @@ services:
       - front-network
 
  #MySQL Service (DEV)
- #Base de datos para desarrollo.
-  mysql-stefanini:
+#  #Base de datos para desarrollo.
+  mysql:
     depends_on:
-      - nginx-proxy-stefanini
+      - nginx-proxy
     image: mysql:5.7.22
-    container_name: mysql-stefanini
+    container_name: mysql
     restart: always
     tty: true
     ports:
   #Tiene comunicación unicamente con la red interna de docker
       - "3306"
     environment:
-      MYSQL_DATABASE: test
+      MYSQL_DATABASE: beitech
       MYSQL_ROOT_PASSWORD: your_mysql_root_password
       SERVICE_TAGS: dev
       SERVICE_NAME: mysql
@@ -70,11 +70,11 @@ services:
 
  #PHPMyAdmi Service (DEV)
  #Cliente para bases de datos. Desarrollo.
-  phpmyadmin-stefanini:
+  phpmyadmin:
     depends_on:
-      - mysql-stefanini
+      - mysql
     image: phpmyadmin/phpmyadmin
-    container_name: phpmyadmin-stefanini
+    container_name: phpmyadmin
     restart: always
     environment:
       PMA_PORT: 3306
@@ -88,8 +88,8 @@ services:
 
 ############## API REST LARAVEL ################
 
-#Nginx Service
-#Servidor web nginx
+# Nginx Service
+# Servidor web nginx
   webserverback:
     depends_on:
       - nginx-proxy-stefanini
@@ -102,39 +102,62 @@ services:
       - "443"
     volumes:
      # Archivo de configuración para el servidor con PHP
-      - ./nginx/sites/stefaniniback.conf:/etc/nginx/conf.d/stefaniniback.conf
+      - ./nginx/sites/back.conf:/etc/nginx/conf.d/back.conf
       - ./nginx/ssl/certs/:/etc/nginx/ssl/
-      - ../stefaniniappback/:/var/www
+      - ../api/:/var/www
     environment:
      #El identificador del contenedor ante el proxy inverso.
-      - VIRTUAL_HOST=stefaniniback.admiapp.com
-      - LETSENCRYPT_HOST=stefaniniback.admiapp.com
+      - VIRTUAL_HOST=back.admiapp.com
+      - LETSENCRYPT_HOST=back.admiapp.com
       - LETSENCRYPT_EMAIL=cesarago852@gmail.com
     networks:
       - back-network
 
-#PHP Service
-#Contenedor con dependencias necesarias para la interpretación de PHP
-#La imagen en la carpeta PHP debe ser copiada en la raiz del proyecto Laravel
+# PHP Service
+# Contenedor con dependencias necesarias para la interpretación de PHP
+# La imagen en la carpeta PHP debe ser copiada en la raiz del proyecto Laravel
   appback:
     build:
-      context: ../stefaniniappback
+      context: ../api
       dockerfile: Dockerfile
-    image: admiapp
-    container_name: appbacks
+    image: appback
+    container_name: appback
     restart: unless-stopped
     depends_on:
       - webserverback
     tty: true
     working_dir: /var/www
     volumes:
-      - ../stefaniniappback:/var/www
+      - ../api:/var/www
     networks:
       - back-network
 
 ############## END API REST LARAVEL ################
 #--------------------------------------------------#
 ############## FRONT APP REACT #####################
+  webserverfront:
+    depends_on:
+      - nginx-proxy
+    build:
+      context: ../spa
+      dockerfile: Dockerfile
+    image: reacttest
+    container_name: webserverfront
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "80"
+    volumes:
+      - ./nginx/sites/node-front.conf:/etc/nginx/conf.d/node-front.conf
+      - ./nginx/ssl/certs/:/etc/nginx/ssl/
+    environment:
+     #El identificador del contenedor ante el proxy inverso.
+      - VIRTUAL_HOST=back.admiapp.com
+      - LETSENCRYPT_HOST=stefaniniback.admiapp.com
+      - LETSENCRYPT_EMAIL=cesarago852@gmail.com
+    networks:
+      - front-network
+
 
 ############## END FRONT APP REACT #################
 
@@ -142,13 +165,15 @@ services:
 #Persistencia de datos de contenedores
 
 volumes:
-  webserverback:
+  webserverfront:
     driver: local
   appback:
     driver: local
-  nginx-proxy-stefanini:
+  webserverback:
+    driver: loca
+  nginx-proxy:
     driver: local
-  letsencript-stefanini:
+  letsencript:
     driver: local
 
 #Docker Networks

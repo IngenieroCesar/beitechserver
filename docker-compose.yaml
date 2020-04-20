@@ -152,8 +152,8 @@ services:
       - ./nginx/ssl/certs/:/etc/nginx/ssl/
     environment:
      #El identificador del contenedor ante el proxy inverso.
-      - VIRTUAL_HOST=back.admiapp.com
-      - LETSENCRYPT_HOST=stefaniniback.admiapp.com
+      - VIRTUAL_HOST=front.admiapp.com
+      - LETSENCRYPT_HOST=front.admiapp.com
       - LETSENCRYPT_EMAIL=cesarago852@gmail.com
     networks:
       - front-network

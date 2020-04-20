@@ -92,7 +92,7 @@ services:
 # Servidor web nginx
   webserverback:
     depends_on:
-      - nginx-proxy-stefanini
+      - nginx-proxy
     image: nginx:alpine
     container_name: webserverback
     restart: unless-stopped
@@ -104,7 +104,7 @@ services:
      # Archivo de configuración para el servidor con PHP
       - ./nginx/sites/back.conf:/etc/nginx/conf.d/back.conf
       - ./nginx/ssl/certs/:/etc/nginx/ssl/
-      - ../api/:/var/www
+      - ../beitechapi/:/var/www
     environment:
      #El identificador del contenedor ante el proxy inverso.
       - VIRTUAL_HOST=back.admiapp.com
@@ -118,7 +118,7 @@ services:
 # La imagen en la carpeta PHP debe ser copiada en la raiz del proyecto Laravel
   appback:
     build:
-      context: ../api
+      context: ../beitechapi
       dockerfile: Dockerfile
     image: appback
     container_name: appback
@@ -128,7 +128,7 @@ services:
     tty: true
     working_dir: /var/www
     volumes:
-      - ../api:/var/www
+      - ../beitechapi:/var/www
     networks:
       - back-network
 
@@ -139,7 +139,7 @@ services:
     depends_on:
       - nginx-proxy
     build:
-      context: ../spa
+      context: ../beitechfront
       dockerfile: Dockerfile
     image: reacttest
     container_name: webserverfront
@@ -169,8 +169,6 @@ volumes:
     driver: local
   appback:
     driver: local
-  webserverback:
-    driver: loca
   nginx-proxy:
     driver: local
   letsencript:

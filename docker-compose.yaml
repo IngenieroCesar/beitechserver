@@ -148,6 +148,7 @@ services:
     ports:
       - "80"
     volumes:
+      - ./nginx/sites/node-front.conf:/etc/nginx/conf.d/node-front.conf
       - ./nginx/ssl/certs/:/etc/nginx/ssl/
     environment:
     #El identificador del contenedor ante el proxy inverso.

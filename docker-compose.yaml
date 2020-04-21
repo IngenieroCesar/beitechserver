@@ -146,7 +146,7 @@ services:
     restart: unless-stopped
     tty: true
     ports:
-      - "8080:80"
+      - "80"
     volumes:
       - ./nginx/ssl/certs/:/etc/nginx/ssl/
     environment:

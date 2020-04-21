@@ -141,17 +141,16 @@ services:
     build:
       context: ../beitechfront
       dockerfile: Dockerfile
-    image: reacttest
+    image: spareact
     container_name: webserverfront
     restart: unless-stopped
     tty: true
     ports:
-      - "80"
+      - "8080:80"
     volumes:
-      - ./nginx/sites/node-front.conf:/etc/nginx/conf.d/node-front.conf
       - ./nginx/ssl/certs/:/etc/nginx/ssl/
     environment:
-     #El identificador del contenedor ante el proxy inverso.
+    #El identificador del contenedor ante el proxy inverso.
       - VIRTUAL_HOST=front.admiapp.com
       - LETSENCRYPT_HOST=front.admiapp.com
       - LETSENCRYPT_EMAIL=cesarago852@gmail.com
